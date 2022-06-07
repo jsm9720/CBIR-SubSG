@@ -1,5 +1,5 @@
-from .utils import get_root_path, exec, get_ts
-from .nx_to_gxl import nx_to_gxl
+from astar_ged.src.utils import get_root_path, exec, get_ts
+from astar_ged.src.nx_to_gxl import nx_to_gxl
 from os.path import isfile
 from os import getpid
 import fileinput
@@ -32,9 +32,9 @@ def ged(g1, g2, algo, debug=False, timeit=False):
             'Different meta data {} vs {}'.format(meta1, meta2))
     prop_file = setup_property_file(src, gp, meta1, append_str)
     rtn = []
-    #print(gp)
-    #print(get_root_path())
-    #print(append_str)
+    # print(gp)
+    # print(get_root_path())
+    # print(append_str)
     if not exec(
             'cd {} && java {}'
             ' -classpath {}/src/graph-matching-toolkit/graph-matching-toolkit.jar algorithms.GraphMatching '
@@ -90,8 +90,8 @@ def setup_property_file(src, gp, meta, append_str):
     destfile = '{}/properties/properties_temp_{}.prop'.format(
         gp, append_str)
     srcfile = '{}/{}.prop'.format(src, meta)
-    #print(destfile)
-    #print(srcfile)
+    # print(destfile)
+    # print(srcfile)
     if not isfile(srcfile):
         if 'beam' in meta:  # for beam
             metasp = meta.split('_')
@@ -117,8 +117,8 @@ def get_result(gp, algo, append_str):
     with open(result_file) as f:
         lines = f.readlines()
         #ln = 16 if 'beam' in algo else 15
-        #t = int(lines[ln].split(': ')[1])  # msec
-        ln = 23 if 'beam' in algo else 24
+        # t = int(lines[ln].split(': ')[1])  # msec
+        ln = 23 if 'beam' in algo else 23
         d = float(lines[ln]) * 2  # alpha=0.5 --> / 2
         return d, result_file
 

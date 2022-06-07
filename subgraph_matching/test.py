@@ -92,6 +92,8 @@ def validation(args, model, test_pts, logger, batch_n, epoch, verbose=False):
     print(pre_pred.shape)
     # print(pred.dtype)
     print(pre_pred)
+    print(pred.shape)
+    print(pred)
     print(labels.shape)
     # print(labels.dtype)
     print(labels)

@@ -26,7 +26,7 @@ from common import combined_syn
 from common import feature_preprocess
 from common import utils
 
-from SimGNN.src.distance import ged, normalized_ged
+from astar_ged.src.distance import ged, normalized_ged
 
 
 def load_dataset(name):
@@ -58,6 +58,9 @@ def load_dataset(name):
         dataset = QM9(root="/tmp/QM9")
     elif name == "atlas":
         dataset = [g for g in nx.graph_atlas_g()[1:] if nx.is_connected(g)]
+    elif name == "scene":
+        with open("data/networkx1000.pickle", "rb") as fr:
+            dataset = pickle.load(fr)
     if task == "graph":
         train_len = int(0.8 * len(dataset))
         train, test = [], []
@@ -75,10 +78,10 @@ def load_dataset(name):
                     del graph.name
                 x_f = graph.x
                 graph = pyg_utils.to_networkx(graph).to_undirected()
-
-                for j in range(3):
-                    nx.set_node_attributes(
-                        graph, {idx: f.item() for idx, f in enumerate(x_f[:, j])}, "f"+str(j))
+                if name != "scene":
+                    for j in range(3):
+                        nx.set_node_attributes(
+                            graph, {idx: f.item() for idx, f in enumerate(x_f[:, j])}, "f"+str(j))
                 # print(graph.nodes.data())
                 # sys.exit()
 
@@ -88,6 +91,9 @@ def load_dataset(name):
                 # sys.exit()
             else:
                 test.append(graph)
+        # for i in range(10):
+        #     print(train[i])
+        # sys.exit()
     return train, test, task
 
 

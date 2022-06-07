@@ -1,4 +1,4 @@
-from utils import get_root_path 
+from astar_ged.src.utils import get_root_path 
 import nx_to_gxl
 #import distance as dt
 import networkx as nx
