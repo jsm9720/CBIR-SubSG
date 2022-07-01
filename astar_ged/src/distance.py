@@ -118,7 +118,7 @@ def get_result(gp, algo, append_str):
         lines = f.readlines()
         #ln = 16 if 'beam' in algo else 15
         # t = int(lines[ln].split(': ')[1])  # msec
-        ln = 23 if 'beam' in algo else 23
+        ln = 24 if 'beam' in algo else 24
         d = float(lines[ln]) * 2  # alpha=0.5 --> / 2
         return d, result_file
 
