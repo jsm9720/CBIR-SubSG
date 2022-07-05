@@ -8,7 +8,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 
 
-def make_pkl(dataset, queue, idxDict, train_num_per_row, max_row_per_worker):   # 64
+def make_pkl(dataset, queue, train_num_per_row, max_row_per_worker):   # 64
     g1_list = []
     g2_list = []
     geds = []
@@ -29,23 +29,25 @@ def make_pkl(dataset, queue, idxDict, train_num_per_row, max_row_per_worker):   
                 dataset[i].graph['gid'] = 0
                 # print(i, dataset[i])
                 if cnt > (train_num_per_row//2):
-                    a, b = idxDict[i]
                     # print(a, b)
-                    r = random.randrange(a, b)
+                    l = list(dataset[i].nodes())
+                    l.remove(random.choice(l))
+                    graph2 = dataset[i].subgraph(l)
                     # print(1, r)
                 else:
                     r = random.randrange(length)
-                    # print(2, r)
-                dataset[r].graph['gid'] = 1
-                d = ged(dataset[i], dataset[r], 'astar',
+                    graph2 = dataset[r]
+                graph2.graph['gid'] = 1
+                d = ged(dataset[i], graph2, 'astar',
                         debug=False, timeit=False)
-                d = normalized_ged(d, dataset[i], dataset[r])
+                d = normalized_ged(d, dataset[i], graph2)
+                print(d)
                 g1_list.append(dataset[i])
-                g2_list.append(dataset[r])
+                g2_list.append(graph2)
                 geds.append(d)
                 cnt += 1
             cnt = 0
-        with open("common/data/DB_dataset_ver3_10000/{}_{}.pickle".format(s, e), "wb") as fw:
+        with open("common/data/DB_dataset_ver3_100000/DB_dataset_ver3_100000_1/{}_{}.pickle".format(s, e), "wb") as fw:
             pickle.dump([g1_list, g2_list, geds], fw)
         g1_list = []
         g2_list = []
@@ -58,18 +60,13 @@ def main():
     train_num_per_row = 64  # 64, 한 image가 비교하는 개수
     max_row_per_worker = 50  # 50, image 개수
     number_of_worker = 80  # 80, 프로세서 개수
-    with open("data/networkx_ver3_10000.pickle", "rb") as fr:
+    with open("data/networkx_ver3_100000/v3_x1000.pickle", "rb") as fr:
         dataset = pickle.load(fr)
     total = []
-    idxDict = dict()
-    idx = [0]
-    idx2 = []
+    # idx2 = []
     for i in range(len(dataset)):
-        subs = make_subgraph(dataset[i], 3, False, False)
-        idx2.append(len(subs))
-        idx.append(len(subs)+idx[i])
-        idxDict.update({j: (idx[i], idx[i+1])
-                        for j in range(idx[i], idx[i+1])})
+        subs = make_subgraph(dataset[i], 4, False, False)
+        # idx2.append(len(subs))
         total.extend(subs)
     # print("각 이미지에 대한 subgraph 수 :", idx2)
     # print("max", max(idx2), "min", min(idx2))
@@ -90,7 +87,7 @@ def main():
     workers = []
     for i in range(number_of_worker):
         worker = mp.Process(target=make_pkl, args=(
-            total, q, idxDict, train_num_per_row, max_row_per_worker))
+            total, q, train_num_per_row, max_row_per_worker))
         workers.append(worker)
         worker.start()
 
