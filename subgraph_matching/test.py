@@ -13,92 +13,53 @@ USE_ORCA_FEATS = False  # whether to use orca motif counts along with embeddings
 MAX_MARGIN_SCORE = 1e9  # a very large margin score to given orca constraints
 
 
-def validation(args, model, test_pts, logger, batch_n, epoch, verbose=False):
+def validation(args, model, dataset, data_source):
     # test on new motifs
     model.eval()
-    all_raw_preds, all_preds, all_labels, all_pre_preds = [], [], [], []
-    for pos_a, pos_b, neg_a, neg_b, pos_label, neg_label in test_pts:
-        if pos_a:
-            pos_a = pos_a.to(utils.get_device())
-            pos_b = pos_b.to(utils.get_device())
-        neg_a = neg_a.to(utils.get_device())
-        neg_b = neg_b.to(utils.get_device())
+    # all_raw_preds, all_preds, all_labels, all_pre_preds = [], [], [], []
+    pos_a, pos_b, pos_label = data_source.gen_batch(
+        dataset, True)
 
-        # 전 버전
-        # labels = torch.tensor([1]*(pos_a.num_graphs if pos_a else 0) +
-        #                       [0]*neg_a.num_graphs).to(utils.get_device())
-        # print(labels)
+    with torch.no_grad():
+        emb_as, emb_bs = model.emb_model(pos_a), model.emb_model(pos_b)
 
-        # 새 버전
-        # labels = np.array(pos_label + neg_label).reshape(-1, 1)
-        # mm = MinMaxScaler()
-        # labels = np.array(1)-mm.fit_transform(labels).reshape(-1)
-        # labels = torch.tensor(labels).to(utils.get_device())
+        labels = torch.tensor(pos_label).to(utils.get_device())
 
-        # 새 버전2
-        labels = torch.tensor(pos_label + neg_label).to(utils.get_device())
+        pred = model(emb_as, emb_bs)
+        raw_pred = model.predict(pred)
+        pre_pred = raw_pred.clone().detach()
 
-        with torch.no_grad():
-            emb_neg_a, emb_neg_b = (model.emb_model(neg_a),
-                                    model.emb_model(neg_b))
-            if pos_a:
-                emb_pos_a, emb_pos_b = (model.emb_model(pos_a),
-                                        model.emb_model(pos_b))
-                emb_as = torch.cat((emb_pos_a, emb_neg_a), dim=0)
-                emb_bs = torch.cat((emb_pos_b, emb_neg_b), dim=0)
-            else:
-                emb_as, emb_bs = emb_neg_a, emb_neg_b
-            pred = model(emb_as, emb_bs)
-            raw_pred = model.predict(pred)
-            pre_pred = torch.tensor(raw_pred)
-            if USE_ORCA_FEATS:
-                import orca
-                import matplotlib.pyplot as plt
-
-                def make_feats(g):
-                    counts5 = np.array(orca.orbit_counts("node", 5, g))
-                    for v, n in zip(counts5, g.nodes):
-                        if g.nodes[n]["node_feature"][0] > 0:
-                            anchor_v = v
-                            break
-                    v5 = np.sum(counts5, axis=0)
-                    return v5, anchor_v
-                for i, (ga, gb) in enumerate(zip(neg_a.G, neg_b.G)):
-                    (va, na), (vb, nb) = make_feats(ga), make_feats(gb)
-                    if (va < vb).any() or (na < nb).any():
-                        raw_pred[pos_a.num_graphs + i] = MAX_MARGIN_SCORE
-
-            if args.method_type == "order":
-                pred = model.clf_model(raw_pred.unsqueeze(1)).view(-1)
-                # pred = pred.argmax(dim=-1)
-                raw_pred *= -1
-            elif args.method_type == "ensemble":
-                pred = torch.stack([m.clf_model(
-                    raw_pred.unsqueeze(1)).argmax(dim=-1) for m in model.models])
-                for i in range(pred.shape[1]):
-                    print(pred[:, i])
-                pred = torch.min(pred, dim=0)[0]
-                raw_pred *= -1
-            elif args.method_type == "mlp":
-                raw_pred = raw_pred[:, 1]
-                pred = pred.argmax(dim=-1)
-        all_raw_preds.append(raw_pred)
-        all_pre_preds.append(pre_pred)
-        all_preds.append(pred)
-        all_labels.append(labels)
-    pre_pred = torch.cat(all_pre_preds, dim=-1)
-    pred = torch.cat(all_preds, dim=-1)
-    labels = torch.cat(all_labels, dim=-1)
-    print(pre_pred.shape)
-    # print(pred.dtype)
-    print(pre_pred)
-    print(pred.shape)
-    print(pred)
-    print(labels.shape)
-    # print(labels.dtype)
-    print(labels)
-    print("loss :", torch.sum(torch.abs(labels-pre_pred)).item())
-    print("loss(MAE) :", mean_absolute_error(labels.cpu(), pred.cpu()))
+    #         if args.method_type == "order":
+    #             pred = model.clf_model(raw_pred.unsqueeze(1)).view(-1)
+    #             # pred = pred.argmax(dim=-1)
+    #             raw_pred *= -1
+    #         elif args.method_type == "ensemble":
+    #             pred = torch.stack([m.clf_model(
+    #                 raw_pred.unsqueeze(1)).argmax(dim=-1) for m in model.models])
+    #             for i in range(pred.shape[1]):
+    #                 print(pred[:, i])
+    #             pred = torch.min(pred, dim=0)[0]
+    #             raw_pred *= -1
+    #         elif args.method_type == "mlp":
+    #             raw_pred = raw_pred[:, 1]
+    #             pred = pred.argmax(dim=-1)
+    #     all_raw_preds.append(raw_pred)
+    #     all_pre_preds.append(pre_pred)
+    #     all_preds.append(pred)
+    #     all_labels.append(labels)
+    # pre_pred = torch.cat(all_pre_preds, dim=-1)
+    # pred = torch.cat(all_preds, dim=-1)
+    # labels = torch.cat(all_labels, dim=-1)
+    # print(pre_pred.shape)
+    # print(pre_pred)
+    # print(pred.shape)
+    # print(pred)
+    # print(labels.shape)
+    # print(labels)
+    # print("loss :", torch.sum(torch.abs(labels-pre_pred)).item())
+    mae = mean_absolute_error(labels.cpu(), pre_pred.cpu())
+    # print("loss(MAE) :", mae)
+    return mae
     '''
     raw_pred = torch.cat(all_raw_preds, dim=-1)
     acc = torch.mean((pred == labels).type(torch.float))
@@ -130,7 +91,7 @@ def validation(args, model, test_pts, logger, batch_n, epoch, verbose=False):
           "TN: {}. FP: {}. FN: {}. TP: {}".format(epoch,
                                                   acc, prec, recall, auroc, avg_prec,
                                                   tn, fp, fn, tp))
-    '''
+
     if not args.test:
         # logger.add_scalar("Accuracy/test", acc, batch_n)
         # logger.add_scalar("Precision/test", prec, batch_n)
@@ -144,7 +105,7 @@ def validation(args, model, test_pts, logger, batch_n, epoch, verbose=False):
         print("Saving {}".format(args.model_path))
         torch.save(model.state_dict(), args.model_path)
 
-    '''
+
     if verbose:
         conf_mat_examples = defaultdict(list)
         idx = 0
