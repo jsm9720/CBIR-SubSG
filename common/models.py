@@ -11,7 +11,6 @@ import torch_geometric.nn as pyg_nn
 import torch_geometric.utils as pyg_utils
 
 from common import utils
-from common import feature_preprocess
 
 import sys
 
@@ -101,12 +100,7 @@ class SkipLastGNN(nn.Module):
         self.dropout = args.dropout
         self.n_layers = args.n_layers
 
-        # feature 사용? 잘 이해 안됨
-        if len(feature_preprocess.FEATURE_AUGMENT) > 0:
-            self.feat_preprocess = feature_preprocess.Preprocess(input_dim)
-            input_dim = self.feat_preprocess.dim_out
-        else:
-            self.feat_preprocess = None
+        self.feat_preprocess = None
         '''
         pre MLP
         '''

@@ -13,8 +13,6 @@ import random
 import scipy.stats as stats
 from tqdm import tqdm
 
-from common import feature_preprocess
-
 
 def sample_neigh(graphs, size):
     ps = np.array([len(g) for g in graphs], dtype=np.float)
@@ -246,8 +244,6 @@ def batch_nx_graphs(graphs, anchors=None):
     #    nx.convert_node_labels_to_integers(graph)) for graph in graphs]
     #loader = DataLoader(motifs_batch, batch_size=len(motifs_batch))
     #for b in loader: batch = b
-    augmenter = feature_preprocess.FeatureAugment()
-
     if anchors is not None:
         for anchor, g in zip(anchors, graphs):
             for v in g.nodes:
@@ -256,10 +252,9 @@ def batch_nx_graphs(graphs, anchors=None):
     for g in graphs:
         for v in g.nodes:
             g.nodes[v]["node_feature"] = torch.tensor([
-                g.nodes[v]["f0"], g.nodes[v]["f1"], g.nodes[v]["f2"]])
+                g.nodes[v]["f0"]])
 
     batch = Batch.from_data_list([DSGraph(g) for g in graphs])
-    batch = augmenter.augment(batch)
     batch = batch.to(get_device())
     # print(batch)
     return batch
