@@ -1,20 +1,16 @@
 from common import utils
-from collections import defaultdict
-from datetime import datetime
 from sklearn.metrics import roc_auc_score, confusion_matrix
 from sklearn.metrics import precision_recall_curve, average_precision_score
-from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_absolute_error
 import torch
-import numpy as np
-import sys
-
-USE_ORCA_FEATS = False  # whether to use orca motif counts along with embeddings
-MAX_MARGIN_SCORE = 1e9  # a very large margin score to given orca constraints
 
 
 def validation(args, model, dataset, data_source):
-    # test on new motifs
+    """Train the embedding model.
+    args: Commandline arguments
+    dataset: Dataset of batch size
+    data_source: DataSource class
+    """
     model.eval()
     # all_raw_preds, all_preds, all_labels, all_pre_preds = [], [], [], []
     pos_a, pos_b, pos_label = data_source.gen_batch(
@@ -22,7 +18,6 @@ def validation(args, model, dataset, data_source):
 
     with torch.no_grad():
         emb_as, emb_bs = model.emb_model(pos_a), model.emb_model(pos_b)
-
         labels = torch.tensor(pos_label).to(utils.get_device())
 
         pred = model(emb_as, emb_bs)
@@ -57,8 +52,9 @@ def validation(args, model, dataset, data_source):
     # print(labels.shape)
     # print(labels)
     # print("loss :", torch.sum(torch.abs(labels-pre_pred)).item())
+
     mae = mean_absolute_error(labels.cpu(), pre_pred.cpu())
-    # print("loss(MAE) :", mae)
+
     return mae
     '''
     raw_pred = torch.cat(all_raw_preds, dim=-1)
@@ -76,52 +72,7 @@ def validation(args, model, dataset, data_source):
     # avg_prec = average_precision_score(labels, raw_pred)
     avg_prec = 0.01
     tn, fp, fn, tp = confusion_matrix(labels, pred).ravel()
-    if verbose:
-        import matplotlib.pyplot as plt
-        precs, recalls, threshs = precision_recall_curve(labels, raw_pred)
-        plt.plot(recalls, precs)
-        plt.xlabel("Recall")
-        plt.ylabel("Precision")
-        plt.savefig("plots/precision-recall-curve.png")
-        print("Saved PR curve plot in plots/precision-recall-curve.png")
 
-    print("\n{}".format(str(datetime.now())))
-    print("Validation. Epoch {}. Acc: {:.4f}. "
-          "P: {:.4f}. R: {:.4f}. AUROC: {:.4f}. AP: {:.4f}.\n     "
-          "TN: {}. FP: {}. FN: {}. TP: {}".format(epoch,
-                                                  acc, prec, recall, auroc, avg_prec,
-                                                  tn, fp, fn, tp))
-
-    if not args.test:
-        # logger.add_scalar("Accuracy/test", acc, batch_n)
-        # logger.add_scalar("Precision/test", prec, batch_n)
-        # logger.add_scalar("Recall/test", recall, batch_n)
-        # logger.add_scalar("AUROC/test", auroc, batch_n)
-        # logger.add_scalar("AvgPrec/test", avg_prec, batch_n)
-        # logger.add_scalar("TP/test", tp, batch_n)
-        # logger.add_scalar("TN/test", tn, batch_n)
-        # logger.add_scalar("FP/test", fp, batch_n)
-        # logger.add_scalar("FN/test", fn, batch_n)
-        print("Saving {}".format(args.model_path))
-        torch.save(model.state_dict(), args.model_path)
-
-
-    if verbose:
-        conf_mat_examples = defaultdict(list)
-        idx = 0
-        for pos_a, pos_b, neg_a, neg_b in test_pts:
-            if pos_a:
-                pos_a = pos_a.to(utils.get_device())
-                pos_b = pos_b.to(utils.get_device())
-            neg_a = neg_a.to(utils.get_device())
-            neg_b = neg_b.to(utils.get_device())
-            for list_a, list_b in [(pos_a, pos_b), (neg_a, neg_b)]:
-                if not list_a:
-                    continue
-                for a, b in zip(list_a.G, list_b.G):
-                    correct = pred[idx] == labels[idx]
-                    conf_mat_examples[correct, pred[idx]].append((a, b))
-                    idx += 1
     '''
 
 

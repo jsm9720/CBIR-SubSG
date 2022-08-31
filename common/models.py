@@ -1,23 +1,13 @@
 """Defines all graph embedding models"""
-from functools import reduce
-import random
-
-import networkx as nx
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch_geometric.nn as pyg_nn
 import torch_geometric.utils as pyg_utils
 
-from common import utils
-
-import sys
-
-# GNN -> concat -> MLP graph classification baseline
-
 
 class BaselineMLP(nn.Module):
+    # GNN -> concat -> MLP graph classification baseline
     def __init__(self, input_dim, hidden_dim, args):
         super(BaselineMLP, self).__init__()
         self.emb_model = SkipLastGNN(input_dim, hidden_dim, hidden_dim, args)
@@ -35,61 +25,44 @@ class BaselineMLP(nn.Module):
     def criterion(self, pred, _, label):
         return F.nll_loss(pred, label)
 
-# Order embedder model -- contains a graph embedding model `emb_model`
 
-
-class OrderEmbedder(nn.Module):
+class GnnEmbedder(nn.Module):
+    # Gnn embedder model -- contains a graph embedding model `emb_model`
     def __init__(self, input_dim, hidden_dim, args):
-        super(OrderEmbedder, self).__init__()
+        super(GnnEmbedder, self).__init__()
         self.emb_model = SkipLastGNN(input_dim, hidden_dim, hidden_dim, args)
         self.margin = args.margin
         self.use_intersection = False
 
-        # self.clf_model = nn.Sequential(nn.Linear(1, 2), nn.LogSoftmax(dim=-1))
         self.clf_model = nn.Sequential(nn.Linear(1, 1))
 
     def forward(self, emb_as, emb_bs):
         return emb_as, emb_bs
 
     def predict(self, pred):
-        """Predict if b is a subgraph of a (batched), where emb_as, emb_bs = pred.
+        """Predict graph edit distance(ged) of graph pairs, where emb_as, emb_bs = pred.
 
-        pred: list (emb_as, emb_bs) of embeddings of graph pairs
+        pred: list (emb_as, emb_bs) of embeddings of graph pairs.
 
-        Returns: list of bools (whether a is subgraph of b in the pair)
+        Returns: list of ged of graph pairs.
         """
         emb_as, emb_bs = pred
-
-        # e = torch.sum(torch.max(torch.zeros_like(emb_as,
-        #                                          device=emb_as.device), emb_bs - emb_as)**2, dim=1)
 
         e = torch.sum(torch.abs(emb_bs - emb_as), dim=1)
 
         return e
 
     def criterion(self, pred, intersect_embs, labels):
-        """Loss function for order emb.
-        The e term is the amount of violation (if b is a subgraph of a).
-        For positive examples, the e term is minimized (close to 0); 
-        for negative examples, the e term is trained to be at least greater than self.margin.
+        """Loss function for emb.
+        The e term is the predicted ged of graph pairs.
 
         pred: lists of embeddings outputted by forward
         intersect_embs: not used
-        labels: subgraph labels for each entry in pred
+        labels: labels for each entry in pred
         """
-        emb_as, emb_bs = pred   # torch.Size([64, 64]), torch.Size([64, 64])
-        # e = torch.sum(torch.max(torch.zeros_like(emb_as,    # torch.Size([64])
-        #                                          device=utils.get_device()), emb_bs - emb_as)**2, dim=1)
-
-        # margin = self.margin
-        # e[labels == 0] = torch.max(torch.tensor(0.0,        # negative 부분 margin 계산
-        #                                         device=utils.get_device()), margin - e)[labels == 0]
-
+        emb_as, emb_bs = pred
         e = torch.sum(torch.abs(emb_bs - emb_as), dim=1)
-
         relation_loss = torch.sum(torch.abs(labels-e))
-
-        # relation_loss = torch.sum(e)
 
         return relation_loss
 
@@ -100,7 +73,6 @@ class SkipLastGNN(nn.Module):
         self.dropout = args.dropout
         self.n_layers = args.n_layers
 
-        self.feat_preprocess = None
         '''
         pre MLP
         '''
@@ -119,9 +91,9 @@ class SkipLastGNN(nn.Module):
         else:
             self.convs = nn.ModuleList()  # nn.Module을 리스트로 정리하는 방법, 파라미터는 리스트
 
-        # nn.Parameter : 모듈의 파라미터들을 iterator로 반환
         # learnable_skip = ones(8,8)
-        if args.skip == 'learnable':    # True
+        # nn.Parameter : 모듈의 파라미터들을 iterator로 반환
+        if args.skip == 'learnable':
             self.learnable_skip = nn.Parameter(torch.ones(self.n_layers,
                                                           self.n_layers))
 
@@ -192,25 +164,7 @@ class SkipLastGNN(nn.Module):
             print("unrecognized model type")
 
     def forward(self, data):
-        # if data.x is None:
-        #    data.x = torch.ones((data.num_nodes, 1), device=utils.get_device())
-
-        #x = self.pre_mp(x)
-        if self.feat_preprocess is not None:
-            if not hasattr(data, "preprocessed"):
-                data = self.feat_preprocess(data)
-                data.preprocessed = True
-
-        # x : [0]~[0] 노드 갯수
-        # torch.Size([538, 1])
-        # 노드 특징에 처음 dataset 읽어올때 노드 특징 사용해보기
         x, edge_index, batch = data.node_feature, data.edge_index, data.batch
-        # print(data)
-        # print(type(data))
-        # print("x :", x)
-        # print("edge_index :", edge_index)
-        # print("batch :", batch)
-        # sys.exit()
         x = self.pre_mp(x)  # torch.Size([538, 64])
 
         all_emb = x.unsqueeze(1)    # torch.Size([539, 1, 64])
@@ -218,13 +172,12 @@ class SkipLastGNN(nn.Module):
         for i in range(len(self.convs_sum) if self.conv_type == "PNA" else    # i -> 0 ~ 7
                        len(self.convs)):
             if self.skip == 'learnable':
-                # node 특징 학습
                 skip_vals = self.learnable_skip[i,
-                                                :i+1].unsqueeze(0).unsqueeze(-1)    # 하삼각행렬 값 업데이트
+                                                :i+1].unsqueeze(0).unsqueeze(-1)
                 # print(skip_vals.shape)    # torch.Size([1, 1~8, 1])
                 # -1 x 1 x 64 * 1 x 1 x 1 // 모든 원소에 sigmoid 값 곱하기
                 curr_emb = all_emb * torch.sigmoid(skip_vals)
-                curr_emb = curr_emb.view(x.size(0), -1)         # -1 x 64
+                curr_emb = curr_emb.view(x.size(0), -1)         # 539 x 64
                 if self.conv_type == "PNA":
                     x = torch.cat((self.convs_sum[i](curr_emb, edge_index),
                                    self.convs_mean[i](curr_emb, edge_index),
@@ -246,10 +199,14 @@ class SkipLastGNN(nn.Module):
             if self.skip == 'learnable':
                 # torch.Size([539, 2, 64])
                 all_emb = torch.cat((all_emb, x.unsqueeze(1)), 1)
+
         # x = pyg_nn.global_mean_pool(x, batch)
+
         # torch.Size([32, 576])
         emb = pyg_nn.global_add_pool(emb, batch)
-        emb = self.post_mp(emb)                     # torch.Size([32, 64])
+        # torch.Size([32, 64])
+        emb = self.post_mp(emb)
+
         # emb = self.batch_norm(emb)   # TODO: test
         #out = F.log_softmax(emb, dim=1)
         return emb
@@ -309,10 +266,9 @@ class SAGEConv(pyg_nn.MessagePassing):
         return '{}({}, {})'.format(self.__class__.__name__, self.in_channels,
                                    self.out_channels)
 
-# pytorch geom GINConv + weighted edges
-
 
 class GINConv(pyg_nn.MessagePassing):
+    # pytorch geom GINConv + weighted edges
     def __init__(self, nn, eps=0, train_eps=False, **kwargs):
         super(GINConv, self).__init__(aggr='add', **kwargs)
         self.nn = nn

@@ -23,8 +23,6 @@ from tqdm import tqdm
 import queue
 import scipy.stats as stats
 
-from common import combined_syn
-from common import feature_preprocess
 from common import utils
 
 from astar_ged.src.distance import ged, normalized_ged
@@ -41,8 +39,8 @@ def load_dataset(name):
     elif name == "proteins":
         dataset = TUDataset(root="/tmp/PROTEINS", name="PROTEINS")
     elif name == "cox2":
-        # dataset = TUDataset(root="/tmp/cox2", name="COX2")
-        dataset = TUDataset(root="/tmp/cox2", name="COX2", use_node_attr=True)
+        dataset = TUDataset(root="/tmp/cox2", name="COX2")
+        # dataset = TUDataset(root="/tmp/cox2", name="COX2", use_node_attr=True)
     elif name == "aids":
         dataset = TUDataset(root="/tmp/AIDS", name="AIDS")
     elif name == "reddit-binary":
@@ -91,21 +89,16 @@ def load_dataset(name):
             for filename in os.listdir('common/data/DB_dataset_ver3_100000/'+foldername):
                 with open("common/data/DB_dataset_ver3_100000/"+foldername+"/"+filename, "rb") as fr:
                     tmp = pickle.load(fr)
-                    for i in range(0,len(tmp[0]),64):
+                    for i in range(0, len(tmp[0]), 64):
                         dataset[0].append(tmp[0][i])
                         dataset[1].append(tmp[1][i])
                         dataset[2].append(tmp[2][i])
         return dataset
-        
+
     if task == "graph":
         train_len = int(0.8 * len(dataset))
         train, test = [], []
-        # print(dataset)
         dataset = list(dataset)
-        # print(dataset[0].edge_index)
-        # print(dataset[0].x)
-        # print(dataset[0].y)
-        # print(dataset[0])
         random.shuffle(dataset)
         has_name = hasattr(dataset[0], "name")
         for i, graph in tqdm(enumerate(dataset)):
@@ -130,8 +123,8 @@ class DataSource:
     def gen_batch(batch_target, batch_neg_target, batch_neg_query, train):
         raise NotImplementedError
 
-class SceneDataSource(DataSource):
 
+class SceneDataSource(DataSource):
     def __init__(self, dataset_name):
         self.dataset = load_dataset(dataset_name)
 
@@ -183,7 +176,7 @@ class SceneDataSource(DataSource):
 
 
 class DiskDataSource(DataSource):
-    """ Uses a set of graphs saved in a dataset file to train the subgraph model.
+    """ Uses a set of graphs saved in a dataset file to train the model.
 
     At every iteration, new batch of graphs (positive and negative) are generated
     by sampling subgraphs from a given dataset.
@@ -227,32 +220,13 @@ class DiskDataSource(DataSource):
                 a = graph.nodes
                 _, b = utils.sample_neigh([graph], random.randint(min_size,
                                                                   len(graph) - 1))
-            # elif sample_method == "graph-split":
-            #     hop = 2
-            #     size = random.randint(min_size+1, max_size)
-            #     for node in graphs[i].nodes:
-            #         start_node = node
-            #         neigh = [start_node]
-            #         frontier = list(set(graph.neighbors(start_node)) - set(neigh))
-            #         visited = set([start_node])
-            #         while len(neigh) < size and frontier:
-            #             new_node = random.choice(list(frontier))
-            #             #new_node = max(sorted(frontier))
-            #             assert new_node not in neigh
-            #             neigh.append(new_node)
-            #             visited.add(new_node)
-            #             frontier += list(graph.neighbors(new_node))
-            #             frontier = [x for x in frontier if x not in visited]
-            #         if len(neigh) == size:
-            #             return graph, neigh
+
             if self.node_anchored:
                 anchor = list(graph.nodes)[0]
                 pos_a_anchors.append(anchor)
                 pos_b_anchors.append(anchor)
 
             neigh_a, neigh_b = graph.subgraph(a), graph.subgraph(b)
-            # print(neigh_a.nodes.data())
-            # sys.exit()
 
             # 신 버전(GED)
             neigh_a.graph['gid'] = 0
@@ -260,24 +234,12 @@ class DiskDataSource(DataSource):
             # d = ged(neigh_a, neigh_b, 'astar', debug=False, timeit=False)
             # d = normalized_ged(d, neigh_a, neigh_b)
             d = 1
-            # print(d)
-            # sys.exit()
 
             # 구 버전(GED)
             # p_tmp = nx.optimize_graph_edit_distance(neigh_a, neigh_b)
             # for p_i in p_tmp:
             #     p_label = p_i
 
-            # print(neigh_a.graph)
-            # print(neigh_a.nodes.data())
-            # print(neigh_a.edges.data())
-
-            # print(neigh_b.graph)
-            # print(neigh_b.nodes.data())
-            # print(neigh_b.edges.data())
-            # sys.exit()
-
-            # print(p_label)
             pos_a.append(neigh_a)
             pos_b.append(neigh_b)
             pos_label.append(d)
@@ -307,11 +269,6 @@ class DiskDataSource(DataSource):
                     neigh_a, neigh_b)
                 if matcher.subgraph_is_isomorphic():  # a <= b (b is subgraph of a)
                     continue
-
-            # print(neigh_a.nodes.data())
-            # print("================================"*2)
-            # print(neigh_b.nodes.data())
-            # sys.exit()
 
             # 신 버전(GED)
             neigh_a.graph['gid'] = 0
