@@ -24,4 +24,10 @@ It also uses [DeepSNAP](https://github.com/snap-stanford/deepsnap), which facili
 of graph algorithms (such as subgraph operation and matching operation) to be performed during training for every iteration, 
 thanks to its synchronization between an internal graph object (such as a NetworkX object) and the Pytorch Geometric Data object.
 
-Detailed library requirements can be found in requirements.txt
+Graph Edit Distance(GED) uses graph-matching-toolkit used SimGNN papers.  
+To use the GED, follow these steps:  
+- `cd aster_ged/src && git clone https://github.com/jsm9720/graph-matching-toolkit.git`  
+- Follow the instructions on https://github.com/jsm9720/graph-matching-toolkit to compile  
+- java
+
+Detailed library requirements can be found in requirements.txt   
