@@ -9,6 +9,7 @@ import os
 import torch
 import argparse
 import pickle
+import time
 
 
 def feature_extract(args):
@@ -28,7 +29,7 @@ def feature_extract(args):
     # model load
     if not os.path.exists(os.path.dirname(args.model_path)):
         os.makedirs(os.path.dirname(args.model_path))
-    model = models.OrderEmbedder(1, args.hidden_dim, args)
+    model = models.GnnEmbedder(1, args.hidden_dim, args)
     model.to(utils.get_device())
     if args.model_path:
         model.load_state_dict(torch.load(
@@ -50,6 +51,7 @@ def feature_extract(args):
             query = query.to(utils.get_device())
             emb_query_data = model.emb_model(query)
             print(emb_db_data.shape)
+            retreival_start_time = time.time()
             e = torch.sum(torch.abs(emb_query_data - emb_db_data), dim=1)
             rank = [(i, d) for i, d in enumerate(e)]
             rank.sort(key=lambda x: x[1])
@@ -67,6 +69,8 @@ def feature_extract(args):
                 candidate_imgs.append(db_idx[n]+1)
 
             results.append(result)
+            retreival_time = time.time() - retreival_start_time
+            print("@@@@@@@@@@@@@@@@@retreival_time@@@@@@@@@@@@@@@@@ :", retreival_time)
 
             # Check similar/same class count with subgraph in DB
             checking_in_db = [len(q_check) - len(q_check - i)
@@ -137,7 +141,7 @@ def load_dataset(max_node, R_BFS):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Order embedding arguments')
+    parser = argparse.ArgumentParser(description='embedding arguments')
 
     utils.parse_optimizer(parser)
     parse_encoder(parser)
