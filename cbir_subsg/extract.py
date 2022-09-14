@@ -1,7 +1,7 @@
 from common import utils
 from common import models
 from common import subgraph
-from subgraph_matching.config import parse_encoder
+from cbir_subsg.config import parse_encoder
 
 from collections import Counter
 

@@ -8,15 +8,15 @@ Inspired by [Neural subgraph matching](http://snap.stanford.edu/subgraph-matchin
   - Graph Similarity method that appllied with A* Algorithm to GED
 
 ## Train GNN encoder
-1. Train the encoder : `python3 -m subgraph_matching.train`.    
+1. Train the encoder : `python3 -m cbir_subsg.train`.    
 Note that a trained order embedding model checkpoint is provided in `ckpt/model.pt`.
-2. Optionally, analyze the trained encoder via `python3 -m subgraph_matching.test`
+2. Optionally, analyze the trained encoder via `python3 -m cbir_subsg.test`
 
 ## Usage
 Scene Graph data (`common/data.py`) can be used to train the model.   
-Transfer the learned model to make inference on scene graph data (see `subgraph_matching/test.py`).
+Transfer the learned model to make inference on scene graph data (see `cbir_subsg/test.py`).
 
-Available configurations can be found in `subgraph_matching/config.py`.
+Available configurations can be found in `cbir_subsg/config.py`.
 
 ## Dependencies
 The library uses PyTorch and [PyTorch Geometric](https://github.com/rusty1s/pytorch_geometric) to implement message passing graph neural networks (GNN). 

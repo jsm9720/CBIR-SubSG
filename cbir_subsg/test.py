@@ -77,5 +77,5 @@ def validation(args, model, dataset, data_source):
 
 
 if __name__ == "__main__":
-    from subgraph_matching.train import main
+    from cbir_subsg.train import main
     main(force_test=True)

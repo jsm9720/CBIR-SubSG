@@ -1,1 +1,1 @@
-python3 -m subgraph_matching.train
+python3 -m cbir_subsg.train

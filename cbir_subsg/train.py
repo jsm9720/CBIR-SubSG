@@ -1,5 +1,5 @@
-from subgraph_matching.config import parse_encoder
-from subgraph_matching.test import validation
+from cbir_subsg.config import parse_encoder
+from cbir_subsg.test import validation
 from common import utils
 from common import models
 from common import data
